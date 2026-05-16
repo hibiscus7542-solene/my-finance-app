@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 
-# 1. 妳的帳戶初始資金
+# 1. 妳的帳戶初始資金 (已同步最新餘額)
 initial_balance = {
     "現金": 1300, "中國信託": 546, "Paypal": 14, 
     "Linebank-活存": 1312, "Linebank-口袋": 33000, 
@@ -10,16 +10,16 @@ initial_balance = {
     "國泰世華": 1015, "元大銀行": 1606, "星展銀行": 0
 }
 
-# --- 設定區 (請確保 SHEET_ID 與 SCRIPT_URL 正確) ---
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz78lUQ6g2rFHB12E8laaE4PjvVYGZjTYawYz0_K6WctZSjHYPiFZgY665Ee67Xz64/exec"
+# --- 核心設定區 (已更新 SHEET_ID) ---
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxb29SmjNZFpwKOzyeJJOt72zZoPaJmK-O-7D-8fLPUHvJydnkO_kyun5xYrIai1_o/exec"
 SHEET_ID = "1Bwcg3ABnVl-cyqKK-jNagqVGqM_Jl3KhFsyV11YZ2_s" 
 SHEET_CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
 
-# 初始化編輯狀態
-if 'editing_idx' not in st.session_state:
-    st.session_state.editing_idx = None
+# 初始化狀態
+if 'editing_idx' not in st.session_state: st.session_state.editing_idx = None
+if 'reserves' not in st.session_state: st.session_state.reserves = []
 
-# 2. 讀取資料函數
+# 2. 讀取資料
 def get_data():
     try:
         df = pd.read_csv(SHEET_CSV_URL)
@@ -31,9 +31,40 @@ def get_data():
 
 df_tx = get_data()
 
-st.title("💰 財務管理工具 V5.3")
+st.title("💰 財務管理工具 V5.6")
 
-# --- A. 快速新增交易 ---
+# --- A. 側邊欄：多筆預留金管理 ---
+st.sidebar.header("🛡️ 預留金清單")
+
+with st.sidebar.expander("➕ 新增預留項目", expanded=False):
+    with st.form("reserve_form", clear_on_submit=True):
+        r_name = st.text_input("項目名稱 (如：房租)")
+        r_amt = st.number_input("金額", min_value=0, step=100)
+        r_note = st.text_input("備註", placeholder="選填")
+        if st.form_submit_button("新增預留"):
+            if r_name:
+                st.session_state.reserves.append({"name": r_name, "amount": r_amt, "note": r_note})
+                st.rerun()
+
+total_reserve = 0
+if st.session_state.reserves:
+    st.sidebar.write("---")
+    for i, res in enumerate(st.session_state.reserves):
+        with st.sidebar.container():
+            c1, c2 = st.columns([4, 1])
+            # 這裡讓金額可以直接編輯
+            new_amt = c1.number_input(f"{res['name']} ({res['note']})", 
+                                      value=int(res['amount']), key=f"res_amt_{i}")
+            st.session_state.reserves[i]['amount'] = new_amt
+            total_reserve += new_amt
+            if c2.button("🗑️", key=f"del_res_{i}"):
+                st.session_state.reserves.pop(i)
+                st.rerun()
+
+st.sidebar.divider()
+st.sidebar.metric("預留金總計", f"${total_reserve:,.0f}")
+
+# --- B. 快速新增交易 ---
 with st.container():
     with st.form("transaction_form", clear_on_submit=True):
         c1, c2, c3 = st.columns(3)
@@ -44,14 +75,13 @@ with st.container():
         
         if st.form_submit_button("💾 存入 Google 雲端"):
             payload = {"method": "post", "From": out_acc, "To": in_acc, "Amount": amount, "Note": note}
-            res = requests.post(SCRIPT_URL, json=payload)
-            if res.status_code == 200:
-                st.success("🎉 儲存成功！")
-                st.rerun()
+            requests.post(SCRIPT_URL, json=payload)
+            st.success("🎉 儲存成功！")
+            st.rerun()
 
 st.divider()
 
-# --- B. 精簡版：緊急備用金進度 ---
+# --- C. 緊急備用金進度 ---
 lb_pocket = initial_balance["Linebank-口袋"]
 if not df_tx.empty and "Amount" in df_tx.columns:
     lb_pocket += (df_tx[df_tx['To'] == "Linebank-口袋"]['Amount'].sum() - 
@@ -60,14 +90,11 @@ if not df_tx.empty and "Amount" in df_tx.columns:
 progress_ratio = min(lb_pocket / 150000, 1.0)
 st.write(f"🚨 **口袋備用金進度: {progress_ratio*100:.1f}%**")
 st.progress(progress_ratio)
-st.write(f"目前累積: ${lb_pocket:,.0f} | 距離 15 萬目標還差: ${max(0, 150000-lb_pocket):,.0f}")
+st.write(f"目前累積: ${lb_pocket:,.0f} | 距離目標還差: ${max(0, 150000-lb_pocket):,.0f}")
 
 st.divider()
 
-# --- C. 財務概況與預留金 ---
-st.sidebar.header("⚙️ 設定")
-reserve_amount = st.sidebar.number_input("預留總金額 (卡費/房租)", min_value=0, value=0, step=100)
-
+# --- D. 財務概況看板 ---
 balances = {}
 bank_total = 0
 for bank, initial in initial_balance.items():
@@ -77,12 +104,10 @@ for bank, initial in initial_balance.items():
     balances[bank] = curr
     bank_total += curr
 
-net_assets = bank_total - reserve_amount
-
 m1, m2, m3 = st.columns(3)
 m1.metric("總資產", f"${bank_total:,.0f}")
-m2.metric("預留金", f"-${reserve_amount:,.0f}")
-m3.metric("可用淨額", f"${net_assets:,.0f}")
+m2.metric("預留金", f"-${total_reserve:,.0f}")
+m3.metric("可用淨額", f"${bank_total - total_reserve:,.0f}")
 
 with st.expander("📂 各帳戶餘額細節"):
     cols = st.columns(3)
@@ -91,7 +116,7 @@ with st.expander("📂 各帳戶餘額細節"):
 
 st.divider()
 
-# --- D. 歷史紀錄 (編輯/刪除) ---
+# --- E. 雲端歷史紀錄 (編輯/刪除) ---
 st.subheader("📝 雲端歷史紀錄")
 if df_tx.empty:
     st.info("尚無紀錄")
@@ -99,11 +124,10 @@ else:
     for idx, row in df_tx.iloc[::-1].iterrows():
         with st.container():
             if st.session_state.editing_idx == idx:
-                new_note = st.text_input("修改備註", value=row['Note'], key=f"edit_{idx}")
+                new_note = st.text_input("修改備註", value=str(row['Note']), key=f"edit_{idx}")
                 c_s, c_c = st.columns(2)
                 if c_s.button("✅ 儲存", key=f"save_{idx}"):
-                    payload = {"method": "update", "index": int(idx), "new_note": new_note}
-                    requests.post(SCRIPT_URL, json=payload)
+                    requests.post(SCRIPT_URL, json={"method": "update", "index": int(idx), "new_note": new_note})
                     st.session_state.editing_idx = None
                     st.rerun()
                 if c_c.button("❌ 取消", key=f"cancel_{idx}"):
@@ -118,6 +142,6 @@ else:
                     st.session_state.editing_idx = idx
                     st.rerun()
                 if r5.button("🗑️", key=f"de_{idx}"):
-                    payload = {"method": "delete", "index": int(idx)}
-                    requests.post(SCRIPT_URL, json=payload)
+                    # 發送刪除請求，確保 index 是整數
+                    requests.post(SCRIPT_URL, json={"method": "delete", "index": int(idx)})
                     st.rerun()
