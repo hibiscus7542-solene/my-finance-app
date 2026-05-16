@@ -4,7 +4,7 @@ import requests
 
 # 1. 妳的帳戶初始資金
 initial_balance = {
-    "現金": 1300, "中國信託": 546, "Paypal": 33345, 
+    "現金": 1300, "中國信託": 546, "Paypal": 14, 
     "Linebank-活存": 1312, "Linebank-口袋": 33000, 
     "玉山銀行": 0, "台新銀行": 252, "國泰世華": 1015, 
     "元大銀行": 1606, "星展銀行": 0
@@ -42,9 +42,9 @@ with st.container():
         with c3:
             amount = st.number_input("金額", min_value=0, step=10)
         
-        note = st.text_input("📝 備註 (拉麵、藥妝...)", "")
+        note = st.text_input("📝 備註", "")
         
-        if st.form_submit_button("💾 存入 Google 雲端"):
+        if st.form_submit_button("💾 儲存"):
             payload = {
                 "From": out_acc, 
                 "To": in_acc, 
