@@ -1,50 +1,52 @@
 import streamlit as st
 import pandas as pd
 
-# 1. 妳的 9 個帳戶初始資金
+# 1. 妳的 9 個帳戶初始資金 (這裡固定放銀行存款即可)
 initial_balance = {
     "現金": 1300, "中國信託": 546, "Paypal": 33345, 
     "Linebank": 14392, "玉山銀行": 0, "台新銀行": 252, 
     "國泰世華": 1015, "元大銀行": 1606, "星展銀行": 0
 }
 
-# 信用卡預留金設定 (妳可以隨時修改這裡的數字)
-credit_card_debts = {
-    "國泰世華": 500,  # 假設目前信用卡費需預留 500
-    "星展銀行": 0     # 假設目前信用卡費 0
-}
-
 # 2. 初始化交易紀錄
 if 'transactions' not in st.session_state:
     st.session_state.transactions = []
 
-st.title("💰 個人多帳戶管理 App V3")
+st.title("💰 專業多帳戶管理系統 V4")
 
-# 3. 新增紀錄功能 (含備註)
-with st.form("transaction_form", clear_on_submit=True):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        out_acc = st.selectbox("轉出帳戶", ["(無)"] + list(initial_balance.keys()))
-    with col2:
-        in_acc = st.selectbox("轉入帳戶", ["(無)"] + list(initial_balance.keys()))
-    with col3:
-        amount = st.number_input("金額", min_value=0)
-    
-    note = st.text_input("📝 備註 (例如: 買拉麵、付房租...)", "")
-    
-    if st.form_submit_button("新增紀錄"):
-        st.session_state.transactions.append({
-            "From": out_acc, 
-            "To": in_acc, 
-            "Amount": amount,
-            "Note": note
-        })
-        st.rerun()
+# --- 新增：左側或上方的預留金設定區 ---
+st.subheader("🛡️ 預留金設定 (卡費/固定支出)")
+col_debt1, col_debt2 = st.columns(2)
+with col_debt1:
+    reserve_amount = st.number_input("請輸入總預留金額 (卡費等)", min_value=0, value=0, step=100)
+with col_debt2:
+    reserve_note = st.text_input("預留項目備註", placeholder="例如：國泰卡費+房租")
+
+st.divider()
+
+# 3. 新增紀錄功能
+with st.expander("➕ 新增交易紀錄", expanded=False):
+    with st.form("transaction_form", clear_on_submit=True):
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            out_acc = st.selectbox("轉出帳戶", ["(無)"] + list(initial_balance.keys()))
+        with c2:
+            in_acc = st.selectbox("轉入帳戶", ["(無)"] + list(initial_balance.keys()))
+        with c3:
+            amount = st.number_input("金額", min_value=0)
+        
+        note = st.text_input("📝 交易備註", "")
+        
+        if st.form_submit_button("確認新增"):
+            st.session_state.transactions.append({
+                "From": out_acc, "To": in_acc, "Amount": amount, "Note": note
+            })
+            st.rerun()
 
 # 4. 計算邏輯
 df_tx = pd.DataFrame(st.session_state.transactions)
 balances = {}
-total_assets = 0
+bank_total = 0
 
 for bank, initial in initial_balance.items():
     current = initial
@@ -53,44 +55,41 @@ for bank, initial in initial_balance.items():
         out_sum = df_tx[df_tx['From'] == bank]['Amount'].sum()
         current += (in_sum - out_sum)
     balances[bank] = current
-    total_assets += current
+    bank_total += current
 
-# 5. 顯示總資產
-st.metric(label="📊 總資產淨值 (TWD)", value=f"${total_assets:,.0f}")
+# 計算扣除預留金後的淨資產
+net_assets = bank_total - reserve_amount
+
+# 5. 總額顯示區
+st.subheader("📊 資產概況")
+m1, m2, m3 = st.columns(3)
+m1.metric("銀行總額", f"${bank_total:,.0f}")
+m2.metric("預留支出", f"-${reserve_amount:,.0f}", delta_color="inverse")
+m3.metric("可動用淨資產", f"${net_assets:,.0f}")
 
 st.divider()
 
-# 6. 顯示各帳戶餘額與信用卡提醒
-st.subheader("🏦 帳戶可用餘額 (扣除預留金)")
+# 6. 各帳戶清單
+st.write("📂 **各帳戶詳細餘額**")
 cols = st.columns(3)
 for i, (bank, bal) in enumerate(balances.items()):
-    with cols[i % 3]:
-        debt = credit_card_debts.get(bank, 0)
-        available = bal - debt
-        
-        st.write(f"**{bank}**")
-        st.write(f"帳面: ${bal:,.0f}")
-        
-        if debt > 0:
-            st.caption(f"⚠️ 預留卡費: -{debt}")
-            
-        if available < 0:
-            st.error(f"可用: ${available:,.0f}") # 負數顯示紅色
-        else:
-            st.success(f"可用: ${available:,.0f}") # 正數顯示綠色
+    cols[i % 3].info(f"**{bank}**\n\n${bal:,.0f}")
 
 st.divider()
 
-# 7. 修改/刪除紀錄功能 (含備註顯示)
+# 7. 歷史紀錄
 st.subheader("📝 歷史紀錄")
 if not st.session_state.transactions:
-    st.info("目前還沒有交易紀錄。")
+    st.info("尚未有交易紀錄。")
 else:
-    for idx, row in enumerate(st.session_state.transactions):
-        c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
-        c1.write(f"{row['From']} ➡️ {row['To']}")
-        c2.write(f"${row['Amount']:,.0f}")
-        c3.write(f"💬 {row['Note']}") # 顯示備註
-        if c4.button("❌", key=f"del_{idx}"):
-            st.session_state.transactions.pop(idx)
-            st.rerun()
+    for idx, row in enumerate(reversed(st.session_state.transactions)):
+        # 反轉順序讓最新的在上面
+        real_idx = len(st.session_state.transactions) - 1 - idx
+        with st.container():
+            r1, r2, r3, r4 = st.columns([3, 2, 4, 1])
+            r1.write(f"**{row['From']}** ➡️ **{row['To']}**")
+            r2.write(f"${row['Amount']:,.0f}")
+            r3.write(f"💬 {row.get('Note', '')}")
+            if r4.button("🗑️", key=f"del_{real_idx}"):
+                st.session_state.transactions.pop(real_idx)
+                st.rerun()
