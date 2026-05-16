@@ -19,18 +19,14 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 # 讀取雲端資料函數
 def get_data():
     try:
-        # 強制指定從雲端讀取，不使用快取
+        # ttl=0 代表每次都抓最新的，不使用舊的快取資料
         return conn.read(ttl=0)
     except Exception as e:
+        # 如果雲端是空的或讀取失敗，回傳一個空的欄位表格
         return pd.DataFrame(columns=["From", "To", "Amount", "Note"])
 
-# 讀取雲端資料函數
-def get_data():
-    try:
-        return conn.read(ttl="0")
-    except:
-        # 如果雲端是空的，回傳一個符合欄位的空 DataFrame
-        return pd.DataFrame(columns=["From", "To", "Amount", "Note"])
+# 執行讀取
+df_tx = get_data()
 
 df_tx = get_data()
 
