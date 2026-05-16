@@ -26,7 +26,7 @@ with st.container():
         with c3:
             amount = st.number_input("金額", min_value=0, step=10)
         
-        note = st.text_input("📝 交易備註 (例如：拉麵、交通費)", "")
+        note = st.text_input("📝 交易備註", "")
         
         if st.form_submit_button("🚀 點我儲存紀錄"):
             st.session_state.transactions.append({
