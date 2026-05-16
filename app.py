@@ -6,7 +6,7 @@ import requests
 initial_balance = {
     "現金": 1300, "中國信託": 546, "Paypal": 14, 
     "Linebank-活存": 1312, "Linebank-口袋": 33000, 
-    "玉山銀行": 0, "台新銀行": 252, "國泰世華": 1015, 
+    "玉山銀行": 15827, "台新銀行": 252, "國泰世華": 1015, 
     "元大銀行": 1606, "星展銀行": 0
 }
 
@@ -29,7 +29,7 @@ def get_data():
 
 df_tx = get_data()
 
-st.title("🚀 雲端同步記帳系統 V5.1")
+st.title("🚀 記帳系統 V5.1")
 
 # --- A. 快速新增交易 ---
 with st.container():
