@@ -26,7 +26,7 @@ def get_data():
 
 df_tx = get_data()
 
-st.title("💰 雲端同步記帳 App V5.0")
+st.title("💰 記帳 App V5.0")
 
 # --- A. 【最上方】快速新增交易區 ---
 with st.container():
@@ -39,9 +39,9 @@ with st.container():
         with c3:
             amount = st.number_input("金額", min_value=0, step=10)
         
-        note = st.text_input("📝 備註 (拉麵、交通...)", "")
+        note = st.text_input("📝 備註 (薪資、交通...)", "")
         
-        if st.form_submit_button("🚀 永久儲存至雲端"):
+        if st.form_submit_button("🚀 儲存"):
             new_data = pd.DataFrame([{
                 "From": out_acc, "To": in_acc, "Amount": amount, "Note": note
             }])
