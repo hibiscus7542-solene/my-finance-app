@@ -43,7 +43,7 @@ def get_data():
 
 df_tx = get_data()
 
-st.title("💰 財務管理工具 V5.7")
+st.title("💰 Solène 財務管理工具")
 
 # --- A. 匯率資訊 ---
 st.info(f"💵 當前匯率：1 USD = {current_rate:.2f} TWD (最後更新：{datetime.now().strftime('%H:%M')})")
