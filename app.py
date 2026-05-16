@@ -16,7 +16,7 @@ SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz78lUQ6g2rFHB12E8laaE4Pjv
 # --- 這裡放入妳 Google 表格的 ID (就是網址中 /d/ 後面那一串) ---
 # 格式範例：https://docs.google.com/spreadsheets/d/妳的ID/gviz/tq?tqx=out:csv
 # 請檢查妳的 ID 並替換下面這行
-SHEET_ID = "1_9f95Kk1CqY_QkG98UfF8f_p9U9_q9_p" # <--- 請把這串換成妳真正的表格 ID
+SHEET_ID = "1Bwcg3ABnVl-cyqKK-jNagqVGqM_Jl3KhFsyV11YZ2_s" # <--- 請把這串換成妳真正的表格 ID
 SHEET_CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
 
 # 2. 讀取資料函數
