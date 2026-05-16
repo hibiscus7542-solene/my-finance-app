@@ -13,8 +13,16 @@ initial_balance = {
 # 緊急備用金目標
 EMERGENCY_FUND_TARGET = 150000
 
-# 2. 建立 Google Sheets 連結 (永久儲存核心)
+# 2. 建立 Google Sheets 連結 (使用安全通道)
 conn = st.connection("gsheets", type=GSheetsConnection)
+
+# 讀取雲端資料函數
+def get_data():
+    try:
+        # 強制指定從雲端讀取，不使用快取
+        return conn.read(ttl=0)
+    except Exception as e:
+        return pd.DataFrame(columns=["From", "To", "Amount", "Note"])
 
 # 讀取雲端資料函數
 def get_data():
